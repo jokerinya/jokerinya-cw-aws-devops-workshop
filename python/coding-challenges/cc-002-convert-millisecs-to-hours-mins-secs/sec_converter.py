@@ -1,7 +1,7 @@
+print('''###  This program converts milliseconds into hours, minutes, and seconds ###
+(To exit the program, please type "exit")''')
 while True:
-    ms = input('''###  This program converts milliseconds into hours, minutes, and seconds ###
-(To exit the program, please type "exit")
-Please enter the milliseconds (should be greater than zero) : ''')
+    ms = input('''Please enter the milliseconds (should be greater than zero) : ''')
     if ms.lower() == 'exit':
         print("Exiting the program... Good Bye")
         break
