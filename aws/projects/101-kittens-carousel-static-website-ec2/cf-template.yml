@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  Cloudformation Template for Kittens Carousel Static Website on EC2. 
+  This template deploys Kittens Carousel Static website on Amazon Linux 2 EC2 instance 
+  with custom security group allowing http connections on port 80. 
+  Kittens Carousel Static Website is downloaded from GitHub repository, then deployed
+  on Apache Web Server
+Parameters:  # Optional
+  InstanceTypeJokerinya:
+    Description: Webserver EC2 instance type. Please Select An Instance Type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m2.2xlarge
+
+Resources:
+  # Below Security Group
+  WebServerSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable HTTP for Apache Web Server #required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  # Below EC2
+  WebServerHost:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: ami-0947d2ba12ee1ff75
+      InstanceType: !Ref InstanceTypeJokerinya
+      KeyName: my_pairs  # !don't use .pem, case sensetive
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub Web Server of ${AWS::StackName} Stack  # User entered Stackname called
+      UserData:
+        Fn::Base64: |
+            #! /bin/bash
+
+            yum update -y
+            yum install httpd -y
+            cd /var/www/html/
+            wget https://raw.githubusercontent.com/jokerinya2013/jokerinya-cw-aws-devops-workshop/master/aws/projects/101-kittens-carousel-static-website-ec2/static-web/index.html
+            wget https://raw.githubusercontent.com/jokerinya2013/jokerinya-cw-aws-devops-workshop/master/aws/projects/101-kittens-carousel-static-website-ec2/static-web/cat0.jpg
+            wget https://raw.githubusercontent.com/jokerinya2013/jokerinya-cw-aws-devops-workshop/master/aws/projects/101-kittens-carousel-static-website-ec2/static-web/cat1.jpg
+            wget https://raw.githubusercontent.com/jokerinya2013/jokerinya-cw-aws-devops-workshop/master/aws/projects/101-kittens-carousel-static-website-ec2/static-web/cat2.jpg
+            systemctl start httpd
+            systemctl enable httpd
+
+Outputs:
+  WebSiteUrlJokerinya:
+    Value: !Sub
+      - http://${PublicAddress}
+      - PublicAddress: !GetAtt WebServerHost.PublicDnsName
+    Description: Kittens Carousel Application URL
