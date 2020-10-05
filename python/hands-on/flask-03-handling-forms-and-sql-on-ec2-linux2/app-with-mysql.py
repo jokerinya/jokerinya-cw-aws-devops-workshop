@@ -1,34 +1,44 @@
 from flask import Flask, render_template, request
-from flask_sqlalchemy import SQLAlchemy
+from flaskext.mysql import MySQL
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./users.db'  # create a database
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+
+app.config['MYSQL_DATABASE_HOST'] = 'RDS ENDPOINT OR localhost'
+app.config['MYSQL_DATABASE_USER'] = 'admin  or root'
+app.config['MYSQL_DATABASE_PASSWORD'] = 'xxxxxPASSWORDxxxxxx'
+app.config['MYSQL_DATABASE_DB'] = 'clarusway'
+app.config['MYSQL_DATABASE_PORT'] = 3306
+mysql = MySQL()
+mysql.init_app(app)
+connection = mysql.connect()
+connection.autocommit(True)
+cursor = connection.cursor()
 
 # execute the code only ONCE
 drop_table="""
 DROP TABLE IF EXISTS users;
 """
 users_table="""
-CREATE TABLE users(
-    username VARCHAR NOT NULL PRIMARY KEY,
-    email VARCHAR
-)
+CREATE TABLE users (
+  username varchar(50) NOT NULL,
+  email varchar(50),
+  PRIMARY KEY (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 data="""
 INSERT INTO users
 VALUES
-    ("Levent Akyuz", "levent.akyuz@gmail.com"),
-    ("Mustafa Kanat", "mustafa.kanat@yahoo.com"),
-    ("Hakan Sule", "hakan.sule@clarusway.com");
+    ("Buddy Rich", "buddy@clarusway.com" ),
+    ("Candido", "candido@clarusway.com"),
+	("Charlie Byrd", "charlie.byrd@clarusway.com");
 """
 
-db.session.execute(drop_table)
-db.session.execute(users_table)
-db.session.execute(data)
-db.session.commit()
+cursor.execute(drop_table)
+cursor.execute(users_table)
+cursor.execute(data)
+# cursor.close()
+# connection.close()
 
 # until here..
 
@@ -37,7 +47,8 @@ def find_emails(keyword):
     query=f"""
     SELECT * FROM users WHERE username like '%{keyword}%'
     """
-    result = db.session.execute(query)  # returns a Result Proxy Obj
+    cursor.execute(query)
+    result = cursor.fetchall()
     user_emails = [(row[0], row[1]) for row in result]
     if not any(user_emails):
         user_emails = [("Not Found", "Not Found")]
@@ -49,15 +60,15 @@ def insert_email(name, email):
     query = f"""
     SELECT * FROM users WHERE username LIKE '{name}';
     """
-    result = db.session.execute(query)
+    cursor.execute(query)
+    result = cursor.fetchall()
     if name == None or email == None:
         response = "User name or Email cannot be empty"
     elif not any(result):
         insert = f"""
         INSERT INTO users VALUES ('{name}', '{email}');
         """
-        result = db.session.execute(insert)
-        db.session.commit()
+        result = cursor.execute(insert)
         response = f"User {name} added successfully."
     else:
         response = f"User {name} already exists."
