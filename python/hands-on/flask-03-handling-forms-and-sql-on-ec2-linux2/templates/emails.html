@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Emails</title>
+</head>
+<body>
+    <h1>Welcome to Email Database</h1>
+    <form action="#" method="POST">
+        <p>
+            <label for="name">User Name</label>
+            <input type="text" name="username" id="name">   
+        </p>
+        <p><button type="submit" style="display: block;">Show</button></p>
+    </form>
+
+    {% if show_result %}
+        <h1>Result for '{{ keyword }} </h1>
+        <ul>
+            {% for x in name_emails %}
+                <li>Username: <b>{{ x[0] }} </b> ----Email: <b>{{ x[1] }} </b> </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
