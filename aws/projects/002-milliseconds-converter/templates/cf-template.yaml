@@ -1,8 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Cloud formation template for millisecond converter application. This app runs on application load banancer. In addition, it is observed by Autoscaling group
-Parameters:
-  
+
 Resources:
   myALBSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
@@ -17,7 +16,7 @@ Resources:
   myWebServerSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
-      GroupDescription: String #required
+      GroupDescription: Enable Http for app from ALB #required
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -39,21 +38,74 @@ Resources:
           - !GetAtt  myWebServerSecurityGroup.GroupId
         TagSpecifications: 
           - ResourceType: instance
-              Tags: 
-                - Key: Name
-                  Value: !Sub Web server of ${AWS::StackName}
-        UserData: 
-          Fn::Base64:
-            !Sub |
+            Tags: 
+              - Key: Name
+                Value: !Sub Web server of ${AWS::StackName}
+        UserData: !Base64 |
               #! /bin/bash
               yum update -y
               yum install python3 -y
               pip3 install flask
               TOKEN="3e245c3be489db5c8f4c243b77940f7fe9185970"
-              FOLDER="XXXXXXXXXXXXXXXXXXXXXXXXX"
+              FOLDER="https://$TOKEN@raw.githubusercontent.com/jokerinya2013/jokerinya-cw-aws-devops-workshop/master/aws/projects/002-milliseconds-converter/"
               curl -s --create-dirs -o "/home/ec2-user/templates/index.html" -L "$FOLDER"templates/index.html
               curl -s --create-dirs -o "/home/ec2-user/templates/result.html" -L "$FOLDER"templates/result.html
               curl -s --create-dirs -o "/home/ec2-user/app.py" -L "$FOLDER"app.py
               python3 /home/ec2-user/app.py
+            # change TOKEN and FOLDER 
+  myServerTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: !GetAtt myWebServerSecurityGroup.VpcId
+  
+  myLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups:
+        - !GetAtt myALBSecurityGroup.GroupId
+      Subnets:
+        - subnet-7aa4ca74
+        - subnet-48669e79
+        - subnet-a2bcf8ef
+        - subnet-7b32815a
+        - subnet-4ac7732c
+        - subnet-9062d3cf
+      Type: application
+  
+  myELBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions: #required
+        - TargetGroupArn: !Ref myServerTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref myLoadBalancer #required
+      Port: 80 #required
+      Protocol: HTTP #required
+
+  myAutoScalingGroup:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      AvailabilityZones:
+        !GetAZs ""
+      DesiredCapacity: "2"
+      HealthCheckGracePeriod: 90
+      HealthCheckType: ELB
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref myLaunchTemplate
+        Version: !GetAtt myLaunchTemplate.LatestVersionNumber
+      MaxSize: "3" #required
+      MinSize: "1" #required
+      TargetGroupARNs:
+        - !Ref myServerTargetGroup
   
 Outputs:
+  WebsiteURL:
+    Description: Milliseconds Converter Application Load Balancer URL
+    Value: !Sub 
+      - http://${ALBaddress}
+      - ALBaddress: !GetAtt myLoadBalancer.DNSName
