@@ -48,5 +48,4 @@ while selection != 4:
     selection = input(" 1. Find phone number \n 2. Insert a phone number \n 3. Delete a person from the phonebook \n 4. Terminate \n Select operation on Phonebook App (1/2/3) : ").strip()
     if selection.isdecimal() and (int(selection) in range(1, 5)):
         selection = int(selection)
-        print("Selection a gidiyor")
         selection_spread(selection)
