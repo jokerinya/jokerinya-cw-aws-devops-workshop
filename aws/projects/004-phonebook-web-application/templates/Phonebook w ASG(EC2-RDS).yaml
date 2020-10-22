@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This template makes a connection between RDS(db.t2.micro) and EC2(t2.micro) for phonebook application. with RDS Security Grup.
+  To get subnet ids from terminal 
+  "$aws ec2 describe-subnets --query Subnets[*].SubnetId"
+  will do the trick.
+Parameters:
+
+  dbpassword:
+    Default: password
+    NoEcho: 'true'
+    Description: The Jokerinya admin account password
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+
+
+Resources:
+  myALBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable Http for ALB #required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  myEC2Securitygroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: SSH&HTTP&MySQL #required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt myALBSecurityGroup.GroupId #uncomment
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+  
+  # ya bura
+  myRDSSecurityGroup:
+    Type: "AWS::RDS::DBSecurityGroup"
+    Properties:
+      GroupDescription: Frontend access #required
+      DBSecurityGroupIngress:
+        - CIDRIP: 0.0.0.0/0
+        - EC2SecurityGroupId: !GetAtt myEC2Securitygroup.GroupId
+
+  myLaunchTemplate:
+    Type: "AWS::EC2::LaunchTemplate"
+    Properties:
+      LaunchTemplateData:
+        ImageId: ami-0947d2ba12ee1ff75
+        InstanceType: t2.micro
+        KeyName: my
+        SecurityGroupIds: 
+          - !GetAtt  myEC2Securitygroup.GroupId
+        TagSpecifications: 
+          - ResourceType: instance
+            Tags: 
+              - Key: Name
+                Value: !Sub Web server of ${AWS::StackName}
+        UserData: 
+          Fn::Base64: 
+            !Sub 
+              - |
+                #! /bin/bash
+                yum update -y
+                yum install python3 -y
+                pip3 install flask
+                pip3 install flask-mysql
+                cd /home/ec2-user
+                echo ${endpoint}>dbserver.endpoint
+                echo ${password}>dbserver.passwd
+                FOLDER="https://raw.githubusercontent.com/jokerinya2013/cfdeneme/main"
+                wget "$FOLDER"/mysql-app.py
+                mkdir templates && cd templates
+                wget "$FOLDER"/templates/add-update.html
+                wget "$FOLDER"/templates/delete.html
+                wget "$FOLDER"/templates/index.html
+                cd /home/ec2-user
+                python3 mysql-app.py
+              - endpoint: !GetAtt myRDS.Endpoint.Address
+                password: !Ref dbpassword
+
+  myServerTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      UnhealthyThresholdCount: 3
+      HealthyThresholdCount: 2
+      VpcId: !GetAtt myEC2Securitygroup.VpcId
+
+  myLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups:
+        - !GetAtt myALBSecurityGroup.GroupId
+      Subnets:
+        - subnet-7aa4ca74
+        - subnet-48669e79
+        - subnet-a2bcf8ef
+        - subnet-7b32815a
+        - subnet-4ac7732c
+        - subnet-9062d3cf
+      Type: application
+  
+  myELBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions: #required
+        - TargetGroupArn: !Ref myServerTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref myLoadBalancer #required
+      Port: 80 #required
+      Protocol: HTTP #required
+
+  myAutoScalingGroup:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      AvailabilityZones:
+        !GetAZs ""
+      DesiredCapacity: "2"
+      HealthCheckGracePeriod: 300
+      HealthCheckType: ELB
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref myLaunchTemplate
+        Version: !GetAtt myLaunchTemplate.LatestVersionNumber
+      MaxSize: "3" #required
+      MinSize: "1" #required
+      TargetGroupARNs:
+        - !Ref myServerTargetGroup
+  
+  # ya bura
+  myRDS:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: '5'
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 0
+      DBInstanceIdentifier: phonebook-app-db
+      DBInstanceClass: db.t2.micro #required
+      DBName: clarusway
+      DBSecurityGroups:
+          - !Ref myRDSSecurityGroup
+      DeleteAutomatedBackups: true
+      Engine: mysql
+      EngineVersion: 8.0.20
+      MasterUserPassword: !Ref dbpassword
+      MasterUsername: admin
+      MultiAZ: false
+      Port: '3306'
+      PubliclyAccessible: true
+      StorageType: gp2
+      Tags:
+        - Key: Name
+          Value: Dbinstance
+
+
+Outputs:
+  myURL:
+    Value: !Sub
+      - http://${ALBAddress}
+      - ALBAddress: !GetAtt myLoadBalancer.DNSName
+    Description: Flask and RDS
