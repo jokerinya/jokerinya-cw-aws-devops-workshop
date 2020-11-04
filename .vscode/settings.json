@@ -1,4 +1,5 @@
 {
-    "python.pythonPath": "C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
-    "python.dataScience.jupyterServerURI": "local"
+    "python.pythonPath": "C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python39\\python.exe",
+    "python.dataScience.jupyterServerURI": "local",
+    "python.linting.pylintEnabled": true
 }
