@@ -77,7 +77,7 @@ At the end of the this hands-on training, students will be able to;
 
 - Open your Jenkins dashboard and navigate to `Manage Jenkins` >> `Manage Plugins` >> `Available` tab
 
-- Search and select `GitHub Integration, Pipeline:GitHub, Docker, Docker Pipeline` plugins, then click to `Install without restart`. Note: No need to install the other `Git plugin` which is already installed can be seen under `Installed` tab.
+- Search and select `Pipeline, GitHub Integration, Pipeline:GitHub, Docker, Docker Pipeline` plugins, then click to `Install without restart`. Note: No need to install the other `Git plugin` which is already installed can be seen under `Installed` tab.
 
 
 ## Part 2 - Integrating Jenkins with GitHub Using Webhook
