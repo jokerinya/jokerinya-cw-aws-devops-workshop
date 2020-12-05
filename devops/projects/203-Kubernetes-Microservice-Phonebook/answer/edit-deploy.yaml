@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edit-deploy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      name: edit
+  template:
+    metadata:
+      labels:
+        name: edit
+        app: odev
+    spec:
+      containers: 
+        - image: jokerinya/k8sodev_edit:v1
+          imagePullPolicy: IfNotPresent
+          name: edit
+          ports: 
+            - containerPort: 80
+          env:
+          - name: MYSQL_DATABASE_HOST
+            value: db-svc
+          - name: MYSQL_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets
+                key: dbname
+            # value: phonebook
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets
+                key: user
+            # value: clarusway
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets
+                key: userpassword
+            # value: Clarusway_1
+            
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"

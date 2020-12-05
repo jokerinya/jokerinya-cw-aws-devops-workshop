@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: mysql
+  template:
+    metadata:
+      labels:
+        name: mysql
+        app: odev
+    spec:
+      containers:
+      - image: mysql:5.7
+        name: mysql
+        ports:
+        - containerPort: 3306
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            # value: P123456p
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets
+                key: rootpassword
+          - name: MYSQL_DATABASE
+            valueFrom:
+                configMapKeyRef:
+                  name: myconfig
+                  key: database
+            # value: phonebook
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets
+                key: user
+            # value: clarusway
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysecrets
+                key: userpassword
+            # value: Clarusway_1
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+        volumeMounts:
+          - name: mysql-storage
+            mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: database-pvc
+                      

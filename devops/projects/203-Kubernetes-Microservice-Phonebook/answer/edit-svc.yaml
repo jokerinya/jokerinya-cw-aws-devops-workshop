@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: edit-svc
+  labels:
+    name: edit
+    app: odev
+spec:
+  selector:
+    name: edit
+  type: NodePort
+  ports:
+   - name: http
+     port: 80
+     targetPort: 80
+     nodePort: 30001
+     protocol: TCP
